@@ -101,4 +101,47 @@
         android:layout_height="match_parent"
         android:visibility="invisible" />
 
+    <Button
+        android:id="@+id/shutter_button"
+        android:layout_gravity="center_horizontal|bottom"
+        android:layout_width="70dp"
+        android:layout_height="70dp"
+        android:background="@drawable/ic_camera_green"
+        android:gravity="center"
+        android:enabled="true"
+        />
+
+    <ImageView
+        android:id="@+id/confirm_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#00000000"
+        android:visibility="invisible" />
+    
+    <android.support.design.widget.FloatingActionButton
+            android:id="@+id/galleryButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_menu_gallery"
+            app:borderWidth="0dp"
+            app:fabSize="mini"
+            app:elevation="0sp"
+            android:layout_marginRight="30dp"
+            android:layout_marginTop="80dp"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentRight="true"
+            android:backgroundTint="#A060FF60"
+            android:tint="#ffffff"/>
+
+    <Button
+        android:id="@+id/checked_button"
+        android:layout_gravity="right|bottom"
+        android:layout_width="70dp"
+        android:layout_height="70dp"
+        android:background="@drawable/ic_checked"
+        android:gravity="center"
+        android:enabled="true"
+        android:visibility="invisible"
+        />
+
 </FrameLayout>

@@ -150,7 +150,7 @@ public class ImageProcessor extends Handler {
 
         if ( detectPreviewDocument(frame) && focused ) {
             numOfSquares ++;
-            if(numOfSquares == numOfRectangles) {
+            if(numOfSquares == numOfRectangles && !mMainActivity.ren) {
                 mMainActivity.blinkScreenAndShutterSound();
                 mMainActivity.waitSpinnerVisible();
                 mMainActivity.requestPicture();
@@ -185,6 +185,11 @@ public class ImageProcessor extends Handler {
         doc.release();
         picture.release();
 
+        if (mMainActivity.ren) {
+            mMainActivity.confirmPicture();
+            return;
+        }
+
         mMainActivity.setImageProcessorBusy(false);
         mMainActivity.setAttemptToFocus(false);
         mMainActivity.waitSpinnerInvisible();
@@ -198,6 +203,8 @@ public class ImageProcessor extends Handler {
         ScannedDocument sd = new ScannedDocument(inputRgba);
 
         Quadrilateral quad = getQuadrilateral(contours, inputRgba.size());
+
+        Log.d(TAG, "quadrlateral " + quad);
 
         Mat doc;
 
@@ -295,6 +302,11 @@ public class ImageProcessor extends Handler {
         Paint paint = new Paint();
         paint.setColor(Color.argb(180, 66, 165, 245));
 
+        // don't paint the area as it's distracting and unnecessary.
+        if (mMainActivity.ren) {
+            paint = null;
+        }
+
         Paint border = new Paint();
         border.setColor(Color.rgb(66, 165, 245));
         border.setStrokeWidth(5);
@@ -381,6 +393,10 @@ public class ImageProcessor extends Handler {
         int leftPos = width/2-baseMeasure;
         int rightPos = width/2+baseMeasure;
 
+        if (mMainActivity.ren) {
+            return true;
+        }
+
         return (
                 rp[0].x <= leftPos && rp[0].y <= topPos
                         && rp[1].x >= rightPos && rp[1].y <= topPos
@@ -391,7 +407,9 @@ public class ImageProcessor extends Handler {
     }
 
     private void enhanceDocument( Mat src ) {
-        Imgproc.cvtColor(src,src, Imgproc.COLOR_RGBA2GRAY);
+        if (!mMainActivity.ren) {
+            Imgproc.cvtColor(src,src, Imgproc.COLOR_RGBA2GRAY);
+        }
         src.convertTo(src,CvType.CV_8UC1, colorGain , colorBias);
     }
 
@@ -496,7 +514,8 @@ public class ImageProcessor extends Handler {
         Imgproc.resize(src,resizedImage,size);
         Imgproc.cvtColor(resizedImage, grayImage, Imgproc.COLOR_RGBA2GRAY, 4);
         Imgproc.GaussianBlur(grayImage, grayImage, new Size(5, 5), 0);
-        Imgproc.Canny(grayImage, cannedImage, 80, 100, 3, false);
+        double threshold = Imgproc.threshold(grayImage, grayImage,0, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
+        Imgproc.Canny(grayImage, cannedImage, threshold*0.5, threshold, 3, false);
 
         ArrayList<MatOfPoint> contours = new ArrayList<MatOfPoint>();
         Mat hierarchy = new Mat();

@@ -40,6 +40,9 @@ import android.view.animation.TranslateAnimation;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
+import android.widget.Button;
+import android.widget.Toast;
+import android.graphics.BitmapFactory;
 
 import com.documentscanner.BuildConfig;
 import com.documentscanner.ImageProcessor;
@@ -109,6 +112,14 @@ public class OpenNoteCameraView extends JavaCameraView implements PictureCallbac
     private View mView = null;
     private boolean manualCapture = false;
 
+    public static boolean ren = true;
+    private Button shutterButton;
+    private Button checkedButton;
+    public static String folderName = "documents";
+    private ImageView confirmView = null;
+    private View cropView = null;
+    public boolean capturing = true;
+    
     public static OpenNoteCameraView mThis;
 
     private OnScannerListener listener = null;
@@ -206,7 +217,29 @@ public class OpenNoteCameraView extends JavaCameraView implements PictureCallbac
         mWaitSpinner = mView.findViewById(R.id.wait_spinner);
         blinkView = mView.findViewById(R.id.blink_view);
         blinkView.setBackgroundColor(Color.WHITE);
-        
+        confirmView = (ImageView)mView.findViewById(R.id.confirm_view);
+
+        checkedButton = (Button) mView.findViewById(R.id.checked_button);
+        Log.d(TAG, "checked button " + checkedButton);
+        checkedButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.d(TAG, "checked clicked");
+                acceptPicture();
+            }
+        });
+
+        shutterButton = (Button) mView.findViewById(R.id.shutter_button);
+        Log.d(TAG, "shutter button " + shutterButton);
+        shutterButton.setOnClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View v) {
+                Log.d(TAG, "shutter clicked");
+                takePicture();
+            }
+        });
+
         mVisible = true;
 
         mActivity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -486,6 +519,10 @@ public class OpenNoteCameraView extends JavaCameraView implements PictureCallbac
     @Override
     public void onPreviewFrame(byte[] data, Camera camera) {
 
+        if (ren && !capturing) {
+            return;
+        }
+
         Camera.Size pictureSize = camera.getParameters().getPreviewSize();
 
         if ( mFocused && ! imageProcessorBusy ) {
@@ -498,7 +535,7 @@ public class OpenNoteCameraView extends JavaCameraView implements PictureCallbac
 
             yuv.release();
 
-            if(!manualCapture){
+            if(!manualCapture || ren){
                 sendImageProcessorMessage("previewFrame", new PreviewFrame( mat, autoMode, !(autoMode) ));
             }
 
@@ -642,6 +679,11 @@ public class OpenNoteCameraView extends JavaCameraView implements PictureCallbac
                     + "/" + folderName + "/DOC-"
                     + new SimpleDateFormat("yyyyMMdd-HHmmss").format(new Date())
                     + ".jpg";
+            if (ren) {
+                fileName = Environment.getExternalStorageDirectory().toString()
+                + "/" + folderName + "/processed"
+                + ".jpg";
+            }
         }
         Mat endDoc = new Mat(Double.valueOf(doc.size().width).intValue(),
                 Double.valueOf(doc.size().height).intValue(), CvType.CV_8UC4);
@@ -650,13 +692,28 @@ public class OpenNoteCameraView extends JavaCameraView implements PictureCallbac
 
         Imgcodecs.imwrite(fileName, endDoc);
 
+        if (ren) {
+            fileName = Environment.getExternalStorageDirectory().toString()
+            + "/" + folderName + "/original"
+            + ".jpg";
+
+            doc = scannedDocument.original;
+            endDoc = new Mat(Double.valueOf(doc.size().width).intValue(),
+            Double.valueOf(doc.size().height).intValue(), CvType.CV_8UC4);
+
+            Core.flip(doc.t(), endDoc, 1);
+
+            Imgcodecs.imwrite(fileName, endDoc);
+        }
 
         endDoc.release();
 
+        if (!ren) {
         WritableMap data = new WritableNativeMap();
         if(this.listener != null){
             data.putString("path",fileName);
             this.listener.onPictureTaken(data);
+        }
         }
 
         if (isIntent) {
@@ -966,5 +1023,52 @@ public class OpenNoteCameraView extends JavaCameraView implements PictureCallbac
 
         safeToTakePicture = true;
 
+    }
+
+    public void takePicture() {
+        capturing = false;
+        capture();
+    }
+    public void confirmPicture() {
+        String fileName = Environment.getExternalStorageDirectory().toString()
+        + "/" + folderName + "/processed"
+        + ".jpg";
+
+        Log.d(TAG, "confirm picture " + fileName);
+        // Toast.makeText(getApplicationContext(), R.string.scanningToast, Toast.LENGTH_LONG).show();
+        // Toast.makeText(getReactApplicationContext(), "clicked", Toast.LENGTH_LONG).show();
+
+        File imgFile = new  File(fileName);
+
+        if(!imgFile.exists()){
+            Log.d(TAG, "can't load image");
+            return;
+        }
+
+        final Bitmap myBitmap = BitmapFactory.decodeFile(imgFile.getAbsolutePath());
+
+        mActivity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                confirmView.setImageBitmap(myBitmap);
+                confirmView.setVisibility(View.VISIBLE);
+                shutterButton.setEnabled(false);
+                shutterButton.setVisibility(View.INVISIBLE);
+                mSurfaceView.setVisibility(SurfaceView.INVISIBLE);
+                checkedButton.setVisibility(View.VISIBLE);
+            }
+        });
+    }
+
+    public void acceptPicture() {
+        Log.d(TAG, "accept picture");
+        String fileName = Environment.getExternalStorageDirectory().toString()
+        + "/" + folderName + "/processed"
+        + ".jpg";
+       WritableMap data = new WritableNativeMap();
+        if(this.listener != null){
+            data.putString("path", fileName);
+            this.listener.onPictureTaken(data);
+        }
     }
 }

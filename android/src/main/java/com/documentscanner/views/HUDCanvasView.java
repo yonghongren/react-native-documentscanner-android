@@ -50,7 +50,9 @@ public class HUDCanvasView extends View {
         }
 
         public void draw ( Canvas canvas ) {
-            mShape.draw(canvas,mPaint);
+            if (mPaint != null) {
+                mShape.draw(canvas,mPaint);
+            }
 
             if (mBorder != null) {
                 mShape.draw(canvas,mBorder);
